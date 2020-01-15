@@ -6,7 +6,7 @@ import tensorflow_probability as tfp
 from typing import Dict, Tuple
 from alibi_detect.models.autoencoder import VAE
 from alibi_detect.models.trainer import trainer
-from alibi_detect.models.losses import loss_adv_vae
+from alibi_detect.models.losses import loss_adv_vae, elbo
 from alibi_detect.base import BaseDetector, FitMixin, ThresholdMixin, adversarial_prediction_dict
 
 logger = logging.getLogger(__name__)
@@ -78,13 +78,17 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
             loss_fn: tf.keras.losses = loss_adv_vae,
             w_model: float = 1.,
             w_recon: float = 0.,
+            w_scale: float = None,
             optimizer: tf.keras.optimizers = tf.keras.optimizers.Adam(learning_rate=1e-3),
             cov_elbo: dict = None,
             epochs: int = 20,
-            batch_size: int = 64,
+            batch_size: int = 128,
             verbose: bool = True,
             log_metric: Tuple[str, "tf.keras.metrics"] = None,
             callbacks: tf.keras.callbacks = None,
+            save_every: int = 1,
+            save_path: str = None,
+            preprocess: bool = False
             ) -> None:
         """
         Train Adversarial VAE model.
@@ -125,6 +129,9 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
                   'verbose': verbose,
                   'log_metric': log_metric,
                   'callbacks': callbacks,
+                  'save_every': save_every,
+                  'save_path': save_path,
+                  'preprocess': preprocess,
                   'loss_fn_kwargs': {'w_model': w_model,
                                      'w_recon': w_recon,
                                      'model': self.model}
@@ -139,6 +146,29 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
                 if cov_elbo_type == 'cov_diag':  # infer standard deviation from covariance matrix
                     cov = tf.math.sqrt(tf.linalg.diag_part(cov))
             kwargs['loss_fn_kwargs'][cov_elbo_type] = tf.dtypes.cast(cov, tf.float32)
+
+        # get scale for adversarial loss; currently done directly in the loss fn
+        skip = True
+        if w_recon == 0 and not skip:
+            kwargs['loss_fn_kwargs']['w_scale'] = 0.
+        elif w_scale is None and not skip:
+            n_batch = X.shape[0] // batch_size
+            #loss_kld, loss_elbo = 0., 0.
+            l_kld, l_elbo = np.zeros((n_batch,)), np.zeros((n_batch,))
+            for i in range(n_batch):
+                istart, iend = i * batch_size, (i + 1) * batch_size
+                X_true = X[istart:iend]
+                X_pred = self.vae(X_true)
+                y_true = self.model(X_true).numpy()
+                y_pred = self.model(X_pred).numpy()
+                loss_kld = tf.reduce_mean(kld(y_true, y_pred)).numpy()
+                l_kld[i] = loss_kld
+                X_true = tf.convert_to_tensor(X_true, dtype=tf.float32)
+                loss_elbo = elbo(X_true, X_pred, sim=tf.dtypes.cast(cov, tf.float32)).numpy()
+                l_elbo[i] = loss_elbo
+            #w_scale = np.abs((loss_kld / loss_elbo)).astype(np.float32)
+            w_scale = (np.std(l_kld) / np.std(l_elbo)).astype(np.float32)
+            kwargs['loss_fn_kwargs']['w_scale'] = w_scale
 
         # train
         trainer(*args, **kwargs)

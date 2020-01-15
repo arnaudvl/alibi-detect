@@ -1,0 +1,165 @@
+1:
+    epochs: 100
+    w_model: 1
+    w_recon: 0
+    cov_elbo: False
+    beta: 0
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+2:
+    epochs: 100
+    w_model: 0.75
+    w_recon: 0.25
+    cov_elbo:
+        type: sim
+        var: 0.05
+    beta: 1
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+3:
+    epochs: 100
+    w_model: 0.5
+    w_recon: 0.5
+    cov_elbo:
+        type: sim
+        var: 0.05
+    beta: 1
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+4:
+    epochs: 100
+    w_model: 0.25
+    w_recon: 0.75
+    cov_elbo:
+        type: sim
+        var: 0.05
+    beta: 1
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+5:
+    epochs: 100
+    w_model: 0
+    w_recon: 1
+    cov_elbo:
+        type: sim
+        var: 0.05
+    beta: 1
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+6:
+    epochs: 100
+    w_model: 0.5
+    w_recon: 0.5
+    cov_elbo:
+        type: sim
+        var: 0.05
+    beta: 2
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+7:
+    epochs: 100
+    w_model: 0.5
+    w_recon: 0.5
+    cov_elbo:
+        type: sim
+        var: 0.05
+    beta: 5
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+8:
+    epochs: 100
+    w_model: 0.5
+    w_recon: 0.5
+    cov_elbo:
+        type: sim
+        var: 0.05
+    beta: 10
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+9:
+    epochs: 100
+    w_model: 0.5
+    w_recon: 0.5
+    cov_elbo:
+        type: sim
+        var: 0.025
+    beta: 1
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+10:
+    epochs: 100
+    w_model: 0.5
+    w_recon: 0.5
+    cov_elbo:
+        type: sim
+        var: 0.075
+    beta: 1
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+11:
+    epochs: 100
+    w_model: 0.5
+    w_recon: 0.5
+    cov_elbo:
+        type: sim
+        var: 0.1
+    beta: 1
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+12:
+    epochs: 100
+    w_model: 1
+    w_recon: 0
+    cov_elbo:
+        type: sim
+        var: 0.05
+    beta: 1
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+13:
+    epochs: 100
+    w_model: 1
+    w_recon: 0
+    cov_elbo:
+        type: sim
+        var: 0.05
+    beta: 5
+    latent_dim: 50
+    verbose: False
+    save_every: 2
+
+14:
+    epochs: 100
+    w_model: 1
+    w_recon: 0
+    cov_elbo:
+        type: sim
+        var: 0.05
+    beta: 10
+    latent_dim: 50
+    verbose: False
+    save_every: 2

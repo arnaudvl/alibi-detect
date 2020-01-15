@@ -33,7 +33,7 @@ setup(
         "pandas",
         "scipy",
         "scikit-learn",
-        "tensorflow>=2",
+        "tensorflow-gpu==2",
         "tensorflow_probability>=0.8"
     ],
     tests_require=["pytest", "pytest-cov"],

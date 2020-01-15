@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Flatten
 from tensorflow.keras.losses import kld
 import tensorflow_probability as tfp
+from typing import Tuple
 from alibi_detect.models.gmm import gmm_params, gmm_energy
 
 
@@ -9,7 +10,8 @@ def elbo(y_true: tf.Tensor,
          y_pred: tf.Tensor,
          cov_full: tf.Tensor = None,
          cov_diag: tf.Tensor = None,
-         sim: float = .05
+         sim: float = .05,
+         reduce: bool = True
          ) -> tf.Tensor:
     """
     Compute ELBO loss.
@@ -41,7 +43,10 @@ def elbo(y_true: tf.Tensor,
         y_mn = tfp.distributions.MultivariateNormalDiag(Flatten()(y_pred),
                                                         scale_diag=cov_diag,
                                                         scale_identity_multiplier=sim)
-    loss = -tf.reduce_sum(y_mn.log_prob(Flatten()(y_true)))
+    if reduce:
+        loss = -tf.reduce_sum(y_mn.log_prob(Flatten()(y_true)))
+    else:
+        loss = -y_mn.log_prob(Flatten()(y_true))
     return loss
 
 
@@ -134,10 +139,11 @@ def loss_adv_vae(x_true: tf.Tensor,
                  model: tf.keras.Model = None,
                  w_model: float = 1.,
                  w_recon: float = 0.,
+                 w_scale: float = None,
                  cov_full: tf.Tensor = None,
                  cov_diag: tf.Tensor = None,
                  sim: float = .05
-                 ) -> tf.Tensor:
+                 ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
     """
     Loss function used for AdversarialVAE.
 
@@ -166,7 +172,14 @@ def loss_adv_vae(x_true: tf.Tensor,
     """
     y_true = model(x_true)
     y_pred = model(x_pred)
-    loss = w_model * tf.reduce_mean(kld(y_true, y_pred))
+    loss_kld = kld(y_true, y_pred)
+    std_kld = tf.math.reduce_std(loss_kld)
+    loss = w_model * tf.reduce_mean(loss_kld)
     if w_recon > 0.:
-        loss += w_recon * elbo(x_true, x_pred, cov_full=cov_full, cov_diag=cov_diag, sim=sim)
-    return loss
+        loss_recon = elbo(x_true, x_pred, cov_full=cov_full, cov_diag=cov_diag, sim=sim, reduce=False)
+        std_recon = tf.math.reduce_std(loss_recon)
+        w_scale = std_kld / (std_recon + 1e-10)
+        loss += w_recon * w_scale * tf.reduce_mean(loss_recon)
+        return loss, w_model * tf.reduce_mean(loss_kld), w_recon * w_scale * tf.reduce_mean(loss_recon)
+    else:
+        return loss, w_model * tf.reduce_mean(loss_kld)
