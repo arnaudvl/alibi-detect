@@ -160,7 +160,10 @@ def trainer(model: tf.keras.Model,
 
                 if model.losses:  # additional model losses
                     losses['beta'].append(sum(model.losses).numpy())
+                    #print(losses['beta'][-1])
                     loss += sum(model.losses)
+                #    print('VAE loss: {}'.format(losses['beta'][-1]))
+                #    print('total loss: {}'.format(loss.numpy()))
 
             grads = tape.gradient(loss, model.trainable_weights)
             optimizer.apply_gradients(zip(grads, model.trainable_weights))
@@ -184,12 +187,12 @@ def trainer(model: tf.keras.Model,
         # print losses
         kld_mean = np.mean(np.array(losses['kld'][-step:])) if losses['kld'] else 0.
         beta_mean = np.mean(np.array(losses['beta'][-step:])) if losses['beta'] else 0.
-        beta_mean = 0. if math.isnan(beta_mean) else beta_mean
+        #beta_mean = 0. if math.isnan(beta_mean) else beta_mean
         recon_mean = np.mean(np.array(losses['recon'][-step:])) if losses['recon'] else 0.
-        total_mean = kld_mean + beta_mean + recon_mean
+        total_mean = kld_mean + recon_mean + beta_mean
         best_model = best_loss > total_mean
-        print('Loss Epoch {}: Model KLD {:.5f} -- Latent KLD {:.5f} -- Reconstruction {:.5f} -- Best {}'.format(
-            epoch, kld_mean, beta_mean, recon_mean, best_model))
+        print('Loss Epoch {}: Model KLD {:.4f} -- Latent KLD {:.4f} -- Recon {:.4f} -- Total {:.4f} -- Best {}'.format(
+            epoch, kld_mean, beta_mean, recon_mean, total_mean, best_model))
 
         if epoch % save_every == 0:
             save_ad_vae(model, os.path.join(save_path, str(epoch)))

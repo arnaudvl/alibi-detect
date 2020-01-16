@@ -140,6 +140,7 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
         # initialize covariance matrix if default adversarial vae loss is used with elbo enabled
         use_elbo = loss_fn.__name__ == 'loss_adv_vae' and cov_elbo
         if use_elbo:
+            print('NOT OK')
             cov_elbo_type, cov = [*cov_elbo][0], [*cov_elbo.values()][0]
             if cov_elbo_type in ['cov_full', 'cov_diag']:
                 cov = tfp.stats.covariance(X.reshape(X.shape[0], -1))
@@ -150,8 +151,10 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
         # get scale for adversarial loss; currently done directly in the loss fn
         skip = True
         if w_recon == 0 and not skip:
+            print('NOT OK')
             kwargs['loss_fn_kwargs']['w_scale'] = 0.
         elif w_scale is None and not skip:
+            print('NOT OK')
             n_batch = X.shape[0] // batch_size
             #loss_kld, loss_elbo = 0., 0.
             l_kld, l_elbo = np.zeros((n_batch,)), np.zeros((n_batch,))

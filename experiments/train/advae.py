@@ -45,7 +45,7 @@ def run(dataset: str) -> None:
     n_exp = len(list(cfg.keys()))
     for exp, params in cfg.items():
 
-        print('Experiment {} of {}'.format(exp, n_exp))
+        print('Experiment {} of {}'.format(exp+1, n_exp))
 
         # initialize adversarial detector
         ad = AdversarialVAE(

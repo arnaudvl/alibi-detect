@@ -175,6 +175,7 @@ def loss_adv_vae(x_true: tf.Tensor,
     loss_kld = kld(y_true, y_pred)
     std_kld = tf.math.reduce_std(loss_kld)
     loss = w_model * tf.reduce_mean(loss_kld)
+    # TODO: run with unscaled losses!
     if w_recon > 0.:
         loss_recon = elbo(x_true, x_pred, cov_full=cov_full, cov_diag=cov_diag, sim=sim, reduce=False)
         std_recon = tf.math.reduce_std(loss_recon)
