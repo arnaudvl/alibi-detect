@@ -1,0 +1,15 @@
+0:
+    epochs: 200
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+
+1:
+    epochs: 200
+    w_model: 0.75
+    w_recon: 0.25
+    ae_type: ae
+    verbose: False
+    save_every: 2

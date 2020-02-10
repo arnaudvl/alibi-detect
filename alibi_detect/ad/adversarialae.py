@@ -1,28 +1,82 @@
 import logging
 import numpy as np
+import os
 import tensorflow as tf
+from tensorflow.keras.layers import Dense, Flatten
 from tensorflow.keras.losses import kld
-import tensorflow_probability as tfp
-from typing import Dict, Tuple
-from alibi_detect.models.autoencoder import VAE
+from tensorflow.keras.models import Model
+from typing import Dict, Tuple, Union
+from alibi_detect.models.autoencoder import AE
 from alibi_detect.models.trainer import trainer
-from alibi_detect.models.losses import loss_adv_vae, elbo
+from alibi_detect.models.losses import loss_adv_vae
+from alibi_detect.utils.saving import load_tf_model
 from alibi_detect.base import BaseDetector, FitMixin, ThresholdMixin, adversarial_prediction_dict
 
 logger = logging.getLogger(__name__)
 
 
-class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
+def load_tf_ae(filepath: str) -> tf.keras.Model:
+    model_dir = os.path.join(filepath, 'model')
+    encoder_net = tf.keras.models.load_model(os.path.join(model_dir, 'encoder_net.h5'))
+    decoder_net = tf.keras.models.load_model(os.path.join(model_dir, 'decoder_net.h5'))
+    ae = AE(encoder_net, decoder_net)
+    try:
+        ae.load_weights(os.path.join(model_dir, 'ae.ckpt'))
+    except:
+        ae.load_weights(os.path.join(model_dir, 'vae.ckpt'))
+    return ae
+
+
+class DefenseWhiteBox(tf.keras.Model):
+
+    def __init__(self, clf: Union[tf.keras.Model, str] = None, ae: Union[tf.keras.Model, str] = None) -> None:
+        super(DefenseWhiteBox, self).__init__()
+        if isinstance(clf, str):
+            self.clf = load_tf_model(clf)
+        else:
+            self.clf = clf
+
+        if isinstance(ae, str):
+            self.ae = load_tf_ae(ae)
+        else:
+            self.ae = ae
+
+    def call(self, x: tf.Tensor) -> tf.Tensor:
+        x_recon = self.ae(x)
+        return self.clf(x_recon)
+
+
+class HiddenKLD(tf.keras.Model):
+
+    def __init__(self, model: tf.keras.Model, hl: int, output_dim: int, hidden_dim: int = None) -> None:
+        super(HiddenKLD, self).__init__()
+        self.hidden_layer = Model(inputs=model.inputs, outputs=model.layers[hl].output)
+        for layer in self.hidden_layer.layers:  # freeze model layers
+            layer.trainable = False
+        self.hidden_dim = hidden_dim
+        if hidden_dim is not None:
+            self.dense_layer = Dense(hidden_dim, activation=tf.nn.relu)
+        self.output_layer = Dense(output_dim, activation=tf.nn.softmax)
+
+    def call(self, x: tf.Tensor) -> tf.Tensor:
+        x = self.hidden_layer(x)
+        if self.hidden_dim is not None:
+            x = self.dense_layer(x)
+        x = Flatten()(x)
+        return self.output_layer(x)
+
+
+class AdversarialAE(BaseDetector, FitMixin, ThresholdMixin):
 
     def __init__(self,
+                 hl: list = None,
+                 hl_output_dim: list = None,
+                 model_hl: list = None,
                  threshold: float = None,
-                 vae: tf.keras.Model = None,
+                 ae: tf.keras.Model = None,
                  model: tf.keras.Model = None,
                  encoder_net: tf.keras.Sequential = None,
                  decoder_net: tf.keras.Sequential = None,
-                 latent_dim: int = None,
-                 samples: int = 10,
-                 beta: float = 0.,
                  data_type: str = None
                  ) -> None:
         """
@@ -32,7 +86,7 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
         ----------
         threshold
             Threshold used for adversarial score to determine adversarial instances.
-        vae
+        ae
             A trained tf.keras model if available.
         model
             A trained tf.keras classification model.
@@ -40,12 +94,6 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
             Layers for the encoder wrapped in a tf.keras.Sequential class if no 'vae' is specified.
         decoder_net
             Layers for the decoder wrapped in a tf.keras.Sequential class if no 'vae' is specified.
-        latent_dim
-            Dimensionality of the latent space.
-        samples
-            Number of samples sampled to evaluate each instance.
-        beta
-            Beta parameter for KL-divergence loss term.
         data_type
             Optionally specifiy the data type (tabular, image or time-series). Added to metadata.
         """
@@ -55,19 +103,28 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
         #    logger.warning('No threshold level set. Need to infer threshold using `infer_threshold`.')
 
         self.threshold = threshold
-        self.samples = samples
         self.model = model
         for layer in self.model.layers:  # freeze model layers
             layer.trainable = False
 
         # check if model can be loaded, otherwise initialize VAE model
-        if isinstance(vae, tf.keras.Model):
-            self.vae = vae
+        if isinstance(ae, tf.keras.Model):
+            self.ae = ae
         elif isinstance(encoder_net, tf.keras.Sequential) and isinstance(decoder_net, tf.keras.Sequential):
-            self.vae = VAE(encoder_net, decoder_net, latent_dim, beta=beta)  # define VAE model
+            self.ae = AE(encoder_net, decoder_net)  # define AE model
         else:
-            raise TypeError('No valid format detected for `vae` (tf.keras.Model) '
+            raise TypeError('No valid format detected for `ae` (tf.keras.Model) '
                             'or `encoder_net` and `decoder_net` (tf.keras.Sequential).')
+
+        # intermediate feature map outputs for KLD
+        if model_hl is not None:
+            self.model_hl = model_hl
+        elif isinstance(hl, list) and isinstance(hl_output_dim, list):
+            self.model_hl = []
+            for l, dim in zip(hl, hl_output_dim):
+                self.model_hl.append(HiddenKLD(self.model, l, dim))
+        else:
+            self.model_hl = None
 
         # set metadata
         self.meta['detector_type'] = 'offline'
@@ -78,9 +135,8 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
             loss_fn: tf.keras.losses = loss_adv_vae,
             w_model: float = 1.,
             w_recon: float = 0.,
-            w_scale: float = None,
+            w_hidden_model: list = None,
             optimizer: tf.keras.optimizers = tf.keras.optimizers.Adam(learning_rate=1e-3),
-            cov_elbo: dict = None,
             epochs: int = 20,
             batch_size: int = 128,
             verbose: bool = True,
@@ -89,10 +145,10 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
             save_every: int = 1,
             save_path: str = None,
             preprocess: bool = False,
-            loss_recon_type: str = 'elbo'
+            temperature: float = 1.
             ) -> None:
         """
-        Train Adversarial VAE model.
+        Train Adversarial AE model.
 
         Parameters
         ----------
@@ -106,11 +162,6 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
             Weight on elbo loss term.
         optimizer
             Optimizer used for training.
-        cov_elbo
-            Dictionary with covariance matrix options in case the elbo loss function is used.
-            Either use the full covariance matrix inferred from X (dict(cov_full=None)),
-            only the variance (dict(cov_diag=None)) or a float representing the same standard deviation
-            for each feature (e.g. dict(sim=.05)).
         epochs
             Number of training epochs.
         batch_size
@@ -123,7 +174,7 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
             Callbacks used during training.
         """
         # train arguments
-        args = [self.vae, loss_fn, X]
+        args = [self.ae, loss_fn, X]
         kwargs = {'optimizer': optimizer,
                   'epochs': epochs,
                   'batch_size': batch_size,
@@ -136,41 +187,12 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
                   'loss_fn_kwargs': {'w_model': w_model,
                                      'w_recon': w_recon,
                                      'model': self.model,
-                                     'loss_recon_type': loss_recon_type}
+                                     'hidden_model': self.model_hl,
+                                     'w_hidden_model': w_hidden_model,
+                                     'temperature': temperature,
+                                     'loss_recon_type': 'mse'},
+                  'hidden_model': self.model_hl
                   }
-
-        # initialize covariance matrix if default adversarial vae loss is used with elbo enabled
-        use_elbo = loss_fn.__name__ == 'loss_adv_vae' and cov_elbo
-        if use_elbo:
-            cov_elbo_type, cov = [*cov_elbo][0], [*cov_elbo.values()][0]
-            if cov_elbo_type in ['cov_full', 'cov_diag']:
-                cov = tfp.stats.covariance(X.reshape(X.shape[0], -1))
-                if cov_elbo_type == 'cov_diag':  # infer standard deviation from covariance matrix
-                    cov = tf.math.sqrt(tf.linalg.diag_part(cov))
-            kwargs['loss_fn_kwargs'][cov_elbo_type] = tf.dtypes.cast(cov, tf.float32)
-
-        # get scale for adversarial loss; currently done directly in the loss fn
-        #skip = True
-        #if w_recon == 0 and not skip:
-        #    kwargs['loss_fn_kwargs']['w_scale'] = 0.
-        #elif w_scale is None and not skip:
-        #    n_batch = X.shape[0] // batch_size
-        #    #loss_kld, loss_elbo = 0., 0.
-        #    l_kld, l_elbo = np.zeros((n_batch,)), np.zeros((n_batch,))
-        #    for i in range(n_batch):
-        #        istart, iend = i * batch_size, (i + 1) * batch_size
-        #        X_true = X[istart:iend]
-        #        X_pred = self.vae(X_true)
-        #        y_true = self.model(X_true).numpy()
-        #        y_pred = self.model(X_pred).numpy()
-        #        loss_kld = tf.reduce_mean(kld(y_true, y_pred)).numpy()
-        #        l_kld[i] = loss_kld
-        #        X_true = tf.convert_to_tensor(X_true, dtype=tf.float32)
-        #        loss_elbo = elbo(X_true, X_pred, sim=tf.dtypes.cast(cov, tf.float32)).numpy()
-        #        l_elbo[i] = loss_elbo
-        #    #w_scale = np.abs((loss_kld / loss_elbo)).astype(np.float32)
-        #    w_scale = (np.std(l_kld) / np.std(l_elbo)).astype(np.float32)
-        #    kwargs['loss_fn_kwargs']['w_scale'] = w_scale
 
         # train
         trainer(*args, **kwargs)
@@ -196,7 +218,8 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
         # update threshold
         self.threshold = np.percentile(adv_score, threshold_perc)
 
-    def score(self, X: np.ndarray) -> np.ndarray:
+    def score(self, X: np.ndarray, T: float = 1., scale_recon: bool = False,
+              w_hidden_model: list = None) -> np.ndarray:
         """
         Compute adversarial scores.
 
@@ -204,22 +227,40 @@ class AdversarialVAE(BaseDetector, FitMixin, ThresholdMixin):
         ----------
         X
             Batch of instances to analyze.
+        T
+            Temperature used for prediction probability scaling.
 
         Returns
         -------
         Array with adversarial scores for each instance in the batch.
         """
-        # sample reconstructed instances
-        X_samples = np.repeat(X, self.samples, axis=0)
-        X_recon = self.vae(X_samples)
+        # reconstructed instances
+        X_recon = self.ae(X)
 
         # model predictions
-        y = self.model(X_samples)
+        y = self.model(X)
         y_recon = self.model(X_recon)
 
-        # KL-divergence between predictions
-        kld_y = kld(y, y_recon).numpy().reshape(-1, self.samples)
-        adv_score = np.mean(kld_y, axis=1)
+        # scale predictions
+        if T != 1.:
+            y = y ** (1/T)
+            y = y / tf.reshape(tf.reduce_sum(y, axis=-1), (-1, 1))
+
+        if scale_recon:
+            y_recon = y_recon ** (1/T)
+            y_recon = y_recon / tf.reduce_sum(y_recon)
+
+        adv_score = kld(y, y_recon).numpy()
+
+        # hidden layer predictions
+        if self.model_hl is not None:
+            if w_hidden_model is None:
+                w_hidden_model = list(np.ones(len(self.model_hl)))
+            for hidden_m, w in zip(self.model_hl, w_hidden_model):
+                h = hidden_m(X)
+                h_recon = hidden_m(X_recon)
+                adv_score += w * kld(h, h_recon).numpy()
+
         return adv_score
 
     def predict(self,

@@ -137,13 +137,16 @@ def loss_vaegmm(x_true: tf.Tensor,
 def loss_adv_vae(x_true: tf.Tensor,
                  x_pred: tf.Tensor,
                  model: tf.keras.Model = None,
+                 hidden_model: list = None,
+                 w_hidden_model: list = None,
                  w_model: float = 1.,
                  w_recon: float = 0.,
-                 w_scale: float = None,
                  cov_full: tf.Tensor = None,
                  cov_diag: tf.Tensor = None,
-                 sim: float = .05
-                 ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+                 sim: float = .05,
+                 loss_recon_type: str = 'elbo',
+                 temperature: float = 1.
+                 ) -> Tuple[tf.Tensor, tf.Tensor]:
     """
     Loss function used for AdversarialVAE.
 
@@ -172,15 +175,38 @@ def loss_adv_vae(x_true: tf.Tensor,
     """
     y_true = model(x_true)
     y_pred = model(x_pred)
+
+    # scale predictions
+    if temperature != 1.:
+        y_true = y_true ** (1 / temperature)
+        y_true = y_true / tf.reshape(tf.reduce_sum(y_true, axis=-1), (-1, 1))
+
     loss_kld = kld(y_true, y_pred)
     std_kld = tf.math.reduce_std(loss_kld)
-    loss = w_model * tf.reduce_mean(loss_kld)
-    # TODO: run with unscaled losses!
+    loss_kld = tf.reduce_mean(loss_kld)
+    #print('Loss ORIGINAL KLD: {}'.format(loss_kld.numpy()))
+
+    if hidden_model is not None:
+        if w_hidden_model is None:
+            w_hidden_model = list(tf.ones(len(hidden_model)))
+        for hidden_m, w in zip(hidden_model, w_hidden_model):
+            h_true = hidden_m(x_true)
+            h_pred = hidden_m(x_pred)
+            loss_hkld = tf.reduce_mean(kld(h_true, h_pred))
+            #print('Loss HKLD: {}'.format(loss_hkld.numpy()))
+            loss_kld += tf.constant(w) * loss_hkld
+    loss_kld *= w_model
+    loss = loss_kld
+
     if w_recon > 0.:
-        loss_recon = elbo(x_true, x_pred, cov_full=cov_full, cov_diag=cov_diag, sim=sim, reduce=False)
+        if loss_recon_type == 'elbo':
+            loss_recon = elbo(x_true, x_pred, cov_full=cov_full, cov_diag=cov_diag, sim=sim, reduce=False)
+        elif loss_recon_type == 'mse':
+            loss_recon = (x_true - x_pred) ** 2
         std_recon = tf.math.reduce_std(loss_recon)
         w_scale = std_kld / (std_recon + 1e-10)
-        loss += w_recon * w_scale * tf.reduce_mean(loss_recon)
-        return loss, w_model * tf.reduce_mean(loss_kld), w_recon * w_scale * tf.reduce_mean(loss_recon)
+        loss_recon = w_recon * w_scale * tf.reduce_mean(loss_recon)
+        loss += loss_recon
+        return loss, loss_kld, loss_recon
     else:
-        return loss, w_model * tf.reduce_mean(loss_kld)
+        return loss, loss_kld

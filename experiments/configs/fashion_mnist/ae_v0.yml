@@ -1,0 +1,79 @@
+0:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+
+1:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+
+2:
+    epochs: 50
+    w_model: 0.75
+    w_recon: 0.25
+    ae_type: ae
+    verbose: False
+    save_every: 2
+
+3:
+    epochs: 50
+    w_model: 0.5
+    w_recon: 0.5
+    ae_type: ae
+    verbose: False
+    save_every: 2
+
+4:
+    epochs: 50
+    w_model: 0.25
+    w_recon: 0.75
+    ae_type: ae
+    verbose: False
+    save_every: 2
+
+5:
+    epochs: 50
+    w_model: 0
+    w_recon: 1
+    ae_type: ae
+    verbose: False
+    save_every: 2
+
+6:
+    epochs: 50
+    w_model: 0.9
+    w_recon: 0.1
+    ae_type: ae
+    verbose: False
+    save_every: 2
+
+7:
+    epochs: 50
+    w_model: 0.8
+    w_recon: 0.2
+    ae_type: ae
+    verbose: False
+    save_every: 2
+
+8:
+    epochs: 50
+    w_model: 0.7
+    w_recon: 0.3
+    ae_type: ae
+    verbose: False
+    save_every: 2
+
+9:
+    epochs: 50
+    w_model: 0.5
+    w_recon: 0.5
+    ae_type: ae
+    verbose: False
+    save_every: 2

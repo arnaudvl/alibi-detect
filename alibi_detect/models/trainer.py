@@ -1,5 +1,4 @@
 import logging
-import math
 import numpy as np
 import os
 import pickle
@@ -41,7 +40,11 @@ def preprocess_image(image, is_training):
     return image
 
 
-def save_ad_vae(model: tf.keras.Model, filepath: str) -> None:
+def save_ad_vae(model: tf.keras.Model, filepath: str, is_vae: bool, model_opt=None) -> None:
+    if is_vae:
+        ckpt = 'vae.ckpt'
+    else:
+        ckpt = 'ae.ckpt'
     # create folder for model weights
     if not os.path.isdir(filepath):
         #logger.warning('Directory {} does not exist and is now created.'.format(filepath))
@@ -52,7 +55,10 @@ def save_ad_vae(model: tf.keras.Model, filepath: str) -> None:
     # save encoder, decoder and vae weights
     model.encoder.encoder_net.save(os.path.join(model_dir, 'encoder_net.h5'))
     model.decoder.decoder_net.save(os.path.join(model_dir, 'decoder_net.h5'))
-    model.save_weights(os.path.join(model_dir, 'vae.ckpt'))
+    if model_opt is not None:
+        for i, m_opt in enumerate(model_opt):
+            m_opt.save_weights(os.path.join(model_dir, 'model_hl_' + str(i) + '.ckpt'))
+    model.save_weights(os.path.join(model_dir, ckpt))
 
 
 def trainer(model: tf.keras.Model,
@@ -69,6 +75,7 @@ def trainer(model: tf.keras.Model,
             save_every: int = 1,
             save_path: str = None,
             preprocess: bool = False,
+            hidden_model: list = None,
             callbacks: tf.keras.callbacks = None) -> None:  # TODO: incorporate callbacks + LR schedulers
     """
     Train TensorFlow model.
@@ -162,6 +169,9 @@ def trainer(model: tf.keras.Model,
                     losses['beta'].append(sum(model.losses).numpy())
                     #print(losses['beta'][-1])
                     loss += sum(model.losses)
+                    is_vae = True
+                else:
+                    is_vae = False
                 #    print('VAE loss: {}'.format(losses['beta'][-1]))
                 #    print('total loss: {}'.format(loss.numpy()))
 
@@ -187,18 +197,25 @@ def trainer(model: tf.keras.Model,
         # print losses
         kld_mean = np.mean(np.array(losses['kld'][-step:])) if losses['kld'] else 0.
         beta_mean = np.mean(np.array(losses['beta'][-step:])) if losses['beta'] else 0.
-        #beta_mean = 0. if math.isnan(beta_mean) else beta_mean
         recon_mean = np.mean(np.array(losses['recon'][-step:])) if losses['recon'] else 0.
-        total_mean = kld_mean + recon_mean + beta_mean
+        total_mean = kld_mean + recon_mean
+        if is_vae:
+            total_mean += beta_mean
         best_model = best_loss > total_mean
         print('Loss Epoch {}: Model KLD {:.4f} -- Latent KLD {:.4f} -- Recon {:.4f} -- Total {:.4f} -- Best {}'.format(
             epoch, kld_mean, beta_mean, recon_mean, total_mean, best_model))
 
         if epoch % save_every == 0:
-            save_ad_vae(model, os.path.join(save_path, str(epoch)))
+            if hidden_model is None:
+                save_ad_vae(model, os.path.join(save_path, str(epoch)), is_vae)
+            else:
+                save_ad_vae(model, os.path.join(save_path, str(epoch)), is_vae, model_opt=hidden_model)
 
         if best_model:
-            save_ad_vae(model, os.path.join(save_path, 'best'))
+            if hidden_model is None:
+                save_ad_vae(model, os.path.join(save_path, 'best'), is_vae)
+            else:
+                save_ad_vae(model, os.path.join(save_path, 'best'), is_vae, model_opt=hidden_model)
             best_loss = total_mean
 
     # save losses

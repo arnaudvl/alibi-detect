@@ -1,0 +1,301 @@
+0:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [3]
+    hl_output_dim: [20]
+    hidden_dim: []
+
+1:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [3]
+    hl_output_dim: [50]
+    hidden_dim: []
+
+2:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [7]
+    hl_output_dim: [20]
+    hidden_dim: []
+
+3:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [7]
+    hl_output_dim: [50]
+    hidden_dim: []
+
+4:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [10]
+    hl_output_dim: [10]
+    hidden_dim: []
+
+5:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [10]
+    hl_output_dim: [50]
+    hidden_dim: []
+
+6:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [7]
+    hl_output_dim: [20]
+    hidden_dim: [256]
+
+7:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [7]
+    hl_output_dim: [50]
+    hidden_dim: [256]
+
+8:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [10]
+    hl_output_dim: [10]
+    hidden_dim: [256]
+
+9:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [10]
+    hl_output_dim: [50]
+    hidden_dim: [256]
+
+10:
+    epochs: 75
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [3,7,10]
+    hl_output_dim: [50,20,10]
+    hidden_dim: []
+    w_hidden_model: [1.,1.,1.]
+
+11:
+    epochs: 75
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [3,7,10]
+    hl_output_dim: [50,20,10]
+    hidden_dim: []
+    w_hidden_model: [1.,0.75,0.5]
+
+12:
+    epochs: 75
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [5,8]
+    hl_output_dim: [40,10]
+    hidden_dim: []
+    w_hidden_model: [1.,1.]
+
+13:
+    epochs: 75
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [3,5,7,8]
+    hl_output_dim: [40,40,10,10]
+    hidden_dim: []
+    w_hidden_model: [1.,1.,1.,1.]
+
+14:
+    epochs: 75
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [3,5,7,8,10]
+    hl_output_dim: [40,40,10,10,10]
+    hidden_dim: []
+    w_hidden_model: [1.,1.,1.,1.,1.]
+
+15:
+    epochs: 75
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [5,8]
+    hl_output_dim: [40,10]
+    hidden_dim: []
+    w_hidden_model: [0.75,1.]
+
+16:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [1]
+    hl_output_dim: [50]
+    hidden_dim: []
+    w_hidden_model: [1.]
+
+17:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [2]
+    hl_output_dim: [50]
+    hidden_dim: []
+    w_hidden_model: [1.]
+
+18:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [4]
+    hl_output_dim: [50]
+    hidden_dim: []
+    w_hidden_model: [1.]
+
+19:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [6]
+    hl_output_dim: [50]
+    hidden_dim: []
+    w_hidden_model: [1.]
+
+20:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [9]
+    hl_output_dim: [10]
+    hidden_dim: []
+    w_hidden_model: [1.]
+
+21:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [11]
+    hl_output_dim: [10]
+    hidden_dim: []
+    w_hidden_model: [1.]
+
+22:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [3]
+    hl_output_dim: [100]
+    hidden_dim: []
+    w_hidden_model: [1.]
+
+23:
+    epochs: 50
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+    hl: [8]
+    hl_output_dim: [5]
+    hidden_dim: []
+    w_hidden_model: [1.]

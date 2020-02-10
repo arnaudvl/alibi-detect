@@ -1,0 +1,17 @@
+0:
+    epochs: 100
+    w_model: 1
+    w_recon: 0
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.
+
+1:
+    epochs: 100
+    w_model: 0
+    w_recon: 1
+    ae_type: ae
+    verbose: False
+    save_every: 2
+    temperature: 1.

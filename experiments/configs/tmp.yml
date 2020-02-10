@@ -1,0 +1,20 @@
+    'cifar10_v1': {
+        'encoder_net': tf.keras.Sequential(
+            [
+                InputLayer(input_shape=(32, 32, 3)),
+                Conv2D(32, 4, strides=2, padding='same', activation=tf.nn.relu, kernel_regularizer=l1(1e-5)),
+                Conv2D(64, 4, strides=2, padding='same', activation=tf.nn.relu, kernel_regularizer=l1(1e-5)),
+                Conv2D(256, 4, strides=2, padding='same', activation=tf.nn.relu, kernel_regularizer=l1(1e-5))
+            ]
+        ),
+        'decoder_net': tf.keras.Sequential(
+            [
+                InputLayer(input_shape=(40,)),  # latent dim
+                Dense(8 * 8 * 32, activation=tf.nn.relu),
+                Reshape(target_shape=(8, 8, 32)),
+                Conv2DTranspose(64, 3, strides=2, padding='same', activation=tf.nn.relu, kernel_regularizer=l1(1e-5)),
+                Conv2DTranspose(32, 3, strides=2, padding='same', activation=tf.nn.relu, kernel_regularizer=l1(1e-5)),
+                Conv2DTranspose(3, 3, strides=2, padding='same', activation='sigmoid', kernel_regularizer=l1(1e-5))
+            ]
+        )
+    }
